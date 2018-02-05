@@ -1,0 +1,766 @@
+Part1 城市维度
+按成单绝对数排名
+select result.city as city, result.all_student as 学生人数,result.call_student as 拨打学生数,
+result.demo_student as 试听完成数,result.pay_student as 成单数,
+(result.pay_student::numeric/result.call_student::numeric)
+from (
+(select (o.base_info->>'city')::varchar as city,count(distinct o.id) as all_student
+from ocean o 
+group by (o.base_info->>'city')::varchar ) as k 
+left join 
+(select (o1.base_info->>'city')::varchar as city_call, count(distinct c.student_id) as call_student
+from comm_records c left join ocean o1 on o1.id = c.student_id
+group by (o1.base_info->>'city')::varchar
+) as k1 on  k.city = k1.city_call
+left join 
+(select (o2.base_info->>'city')::varchar as city_demo, count(distinct d.student_id) as demo_student
+from demo_course d left join ocean o2 on o2.id = d.student_id
+where d.status = 'finished'
+group by (o2.base_info->>'city')::varchar
+) as k2 on k.city = k2.city_demo
+left join 
+(select (o3.base_info->>'city')::varchar as city_pay, count(distinct s.student_id) as pay_student
+from course_order s left join ocean o3 on o3.id = s.student_id
+where s.status = 'finished' 
+group by (o3.base_info->>'city')::varchar
+) as k3 on k.city = k3.city_pay
+)as result 
+order by  result.pay_student
+
+
+Part2 年级维度， 按成单转化率排名
+
+select result.city as city, result.all_student as 学生人数,result.call_student as ,result.demo_student,result.pay_student,
+(result.pay_student::numeric/result.call_student::numeric)
+from (
+(select (o.base_info->>'grade')::varchar as city,count(distinct o.id) as all_student
+from ocean o 
+group by (o.base_info->>'grade')::varchar ) as k 
+left join 
+(select (o1.base_info->>'grade')::varchar as city_call, count(distinct c.student_id) as call_student
+from comm_records c left join ocean o1 on o1.id = c.student_id
+group by (o1.base_info->>'grade')::varchar
+) as k1 on  k.city = k1.city_call
+left join 
+(select (o2.base_info->>'grade')::varchar as city_demo, count(distinct d.student_id) as demo_student
+from demo_course d left join ocean o2 on o2.id = d.student_id
+where d.status = 'finished'
+group by (o2.base_info->>'grade')::varchar
+) as k2 on k.city = k2.city_demo
+left join 
+(select (o3.base_info->>'grade')::varchar as city_pay, count(distinct s.student_id) as pay_student
+from course_order s left join ocean o3 on o3.id = s.student_id
+where s.status = 'finished' 
+group by (o3.base_info->>'grade')::varchar
+) as k3 on k.city = k3.city_pay
+)as result 
+order by  result.pay_student
+
+Part3 资源维度， 按成单转化率排名
+select result.source_name as name , result.all_student as 学生人数,result.call_student ,result.demo_student,result.pay_student,
+(result.pay_student::numeric/result.call_student::numeric)
+from (
+(select ch.name as source_name ,count(distinct o.id) as all_student
+from ocean o left join channel ch on (o.extend_info::json#>>'{channels,0}')::bigint = ch.id 
+group by ch.name ) as k 
+left join 
+(select ch1.name, count(distinct c.student_id) as call_student
+from comm_records c left join ocean o1 on o1.id = c.student_id
+left join channel ch1 on (o1.extend_info::json#>>'{channels,0}')::bigint = ch1.id 
+group by ch1.name
+) as k1 on  k.source_name = k1.name 
+left join 
+(select ch2.name, count(distinct d.student_id) as demo_student
+from demo_course d left join ocean o2 on o2.id = d.student_id
+left join channel ch2 on (o2.extend_info::json#>>'{channels,0}')::bigint = ch2.id 
+where d.status = 'finished'
+group by ch2.name 
+) as k2 on k.source_name = k2.name 
+left join 
+(select ch3.name, count(distinct s.student_id) as pay_student
+from course_order s left join ocean o3 on o3.id = s.student_id
+left join channel ch3 on (o3.extend_info::json#>>'{channels,0}')::bigint = ch3.id 
+where s.status = 'finished' 
+group by ch3.name 
+) as k3 on k.source_name = k3.name 
+)as result 
+where result.all_student>1000
+order by  result.pay_student desc
+
+select a.phone,(extend_info::json#>>'{channels, 0}') ::bigint as channel,b.name
+from ocean a join channel b 
+on (extend_info::json#>>'{channels, 0}') ::bigint=b.id 
+where a.phone in 
+('18793366205')
+
+part4 反向验证
+将成单用户资源分级跑出，进行反向验证
+
+select c.student_id,
+case when (o.base_info->>'city')::varchar in ('北京','杭州','上海','重庆','福州','佛山','广州','青岛',
+'张家口','保定','成都','唐山','西安','遵义','大同','东营','贵阳','哈尔滨','合肥','兰州','南京','宁波',
+'日照','绍兴','深圳','太原') then 'A'
+when (o.base_info->>'city')::varchar in ('天津','潍坊','武汉','郑州','东莞','莱芜','南昌','上饶','邵阳',
+'沈阳','苏州','温州','永州','长沙','沧州','大连','大庆','德州','阜阳','赣州','邯郸','呼和浩特','济南',
+'昆明','丽江','丽水','连云港','牡丹江') then 'B'
+when (o.base_info->>'city')::varchar in ('南充','双鸭山','松原','台州','铁岭','乌鲁木齐','烟台','扬州','营口','运城',
+'枣庄','长春','长治','舟山','白山','包头','宝鸡','本溪','亳州','昌吉回族自治州','郴州','池州','达州','大理','德宏','德令哈',
+'都匀','鄂尔多斯') then 'C'
+when (o.base_info->>'city')::varchar in ('广安','桂林','鹤壁','衡水','衡阳','红河哈尼族彝族自治州','淮安','惠州','吉安',
+	'集宁','济宁','锦州','晋城','晋中','荆门','荆州','开封','克拉玛依','廊坊','辽源','聊城','柳州','六安',
+'六盘水','龙岩','吕梁','洛阳','南通')then 'D'
+else 'E' end as 城市,
+case when (o.base_info->>'grade')::int in (7,8,105) then 'A'
+     when (o.base_info->>'grade')::int in (3,106,9) then 'B'
+     when (o.base_info->>'grade')::int in (104,11,13) then 'C'
+     when (o.base_info->>'grade')::int in (2,12) then 'D'
+     else 'E'
+     end as 年级,
+case when (ch.name in ('cc新建leads',	
+'APP-拍搜新注册高购买力用户',	
+'拍搜APP',	
+'app-0yst-A_sy_qimochongci',	
+'app-0yst-A_sy_tifen',	
+'app-0yst-A_sy_qimoztc_12',	
+'拍搜APP-首页',	
+'最近半年活跃且一二线且拍搜50次以上或消费过',	
+'app-0yst-A_ps_tifen',	
+'app-0yst-A_sy_qimoztc',	
+'TMK',	
+'app-0yst-A_syfeed_tifen',	
+'app-0yst-A_dy_qimochongci',	
+'拍搜APP-辅导页',	
+'fudao-0yst-A_qimochongci',	
+'sm-0yst-A_afanty100_prize5',	
+'FROM_LEAD',	
+'渠道投放-搜狗',	
+'sm-0yst-A_afanty100_tifen',	
+'referral-reward-extra_dailyhypush',	
+'社群活动-家长公众号',	
+'app-0yst-A_dy_touxue',	
+'sm-0yst-A_spzp020_ynf_qimoztc',	
+'1617没充值_APP拍搜次数分类（50+）',	
+'app-0yst-A_ps_touxue',	
+'app-0yst-A_dy_qimoztc',	
+'最近6-12个月活跃且一二线且拍搜10-50次且未消费过',	
+'400热线',	
+'渠道投放-360',	
+'社群活动-微智校园',	
+'app-0yuanshiting-B_fdbanner0708',	
+'test-kewaimiao-extra_zhouzhou',	
+'FROM_CONTACT',	
+'spzp020-0yst-A_tifen',	
+'sm-0yst-A_afanti1to1_zhenduan',	
+'社群活动-尚品宅配',	
+'sm-0yst-A_afanti1to1_prize5_zhenduan',	
+'原CRM_0元试听20171121',	
+'某特定城市且拍搜次数10-50次且消费金额等于0且最后活跃日期6-12个月',	
+'今日头条-01I期末考试-A',	
+'原CRM_0元试听20171123B_coast',	
+'1617没充值_APP拍搜次数分类（10-30）',	
+'渠道投放-百度',	
+'sm-0yst-A_spzp020_flw_qimoztc',	
+'app-0yst-A_sy_zhenduan',	
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内',	
+'拍搜APP-辅导banner',	
+'拍搜APP-辅导Banner',	
+'referral-reward-extra_referrer',	
+'sm-0yst-A_afanty100_touxue',	
+'拍搜APP--拍搜结果页',	
+'app-0yst-A_ps_zhenduan',	
+'app-0yst-A_syfeed_ganen',	
+'sm-0yst-A_afanty100_qimoztc',	
+'sm-0yst-A_gczw_qimoztc',	
+'sm-0yst-A_afanti1to1_tifen',	
+'fudao-0yst-A_zhenduan')) then 'A'
+when ch.name in ('fudao-0yst-A_qimoztc',
+'referal-0yst-extra_杜年',
+'社群活动-智慧家长',
+'原CRM0元试听20171128_ocean',
+'app-0yst-A_sy_nanti_test1',
+'sm-0yst-A_afanti1to1_nov11',
+'sm-0yst-A_afanti1to1_wz_qimochongci',
+'sm-0yst-A_afantihjz_wz_qimochongci',
+'sm-0yst-A_afantyti_qimochongci',
+'sm-0yst-A_chubao_qimoztc',
+'sm-0yst-A_shequn_qimoztc',
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内（COAST）',
+'1617没充值_APP拍搜次数分类（10以内）',
+'app-0yst-A_ps_tifen_12',
+'今日头条渠道投放',
+'社群活动-海报',
+'sm-0yst-A_afanti1to1_nuandong4',
+'sm-0yst-A_spzp020_ponycar_qimoztc',
+'wb-default-extra',
+'app-0yst-A_dy_zhenduan',
+'社群活动-学生公众号',
+'sm-0yst-A_afanti1to1_wz_qimoztc',
+'teacher-sqtx0yst-A_',
+'原CRM0元试听20171117',
+'原crm_0元试听20171129ocean',
+'599zuowen-sm-extra_afanty100',
+'APP_0元试听_scbanner0603',
+'家长-转介绍',
+'sm-0yst-A_afanty100_prize5_tfb',
+'原CRM_0元试听20171123A_coast',
+'sm-0yst-A_afantihjz_qimoztc',
+'sm-0yst-A_shequn_qimochongci',
+'teacher-sqtx0yst-A_15137000960',
+'1617没充值_APP拍搜次数分类（30-50）',
+'sm-0yst-A_spzp020_gzlt_qimoztc',
+'sm-0yst-A_afanty100_yiyangqianxi',
+'spzp020-0yst-A_zhenduan',
+'sm-0yst-A_syfeed',
+'tmk新建leads',
+'社群活动-腾讯',
+'app-0yst-A_ps_ganen',
+'APP-0yuanshiting-B_syfeed0620',
+'APP_0元试听_fdbanner0616',
+'sghanyu-aft1v1-B_0713pc',
+'sm-0yst-A_afanty100_wz_qimoztc',
+'sm-0yst-A_afantyti_18xinnianli',
+'sm-0yst-A_guangfa_zhenduan',
+'今日头条-01G排名超车-A') then 'B'
+when ch.name in ('APP_0元试听_zbkbanner0602',	
+'sgzuowen-sqtx0yst-B_0713',	
+'sm-0yst-A_afanti1to1',	
+'FROM_POTENTIAL',	
+'app-0yst-A_ps_qimochongci',	
+'sm-0yst-A_spzp020_aft_qimoztc',	
+'拍搜APP-弹窗',	
+'sghanyu-aft1v1-B_0713',	
+'referral-reward-extra_ps',	
+'1617拍搜APP_金额300以上_初高中',	
+'sm-0yst-A_afanty100',	
+'qqrobot-0yuanshiting0621-B',	
+'1617拍搜APP_金额10-100_初高中',	
+'sm-0yst-A_meiyuanbang_tifen',	
+'sm-0yst-A_spzp020_czwy_qimoztc',	
+'sm-0yst-A_xuexiba_tifen',	
+'teacher-sqtx0yst-A_15839367338',	
+'teacher-sqtx0yst-A_15861287058',	
+'订阅号按钮',	
+'社群活动',	
+'app-0yst-A_syfeed_nianmokh',	
+'拍搜APP-拍搜结果页',	
+'sm-0yst-A_afanty100_zhenduan',	
+'app-0yst-A_ps_qimozhenduan',	
+'spzp020-0yst-A_1024',	
+'sgzuowen-sqtx0yst-B_0713pc',	
+'河北保定-消费大于0',	
+'shequn-sqtx0yst-B',	
+'sm-0yst-A_spzp020_qimoztc',	
+'sm-0yst-A_afanty100_qimozhenduan',	
+'原CRM最近半年活跃且一二线且拍搜50次以上或消费过_highseas',	
+'app-0yst-A_sy',	
+'app-0yst-A_dy_qimozhenduan',	
+'fudao-default-extra',	
+'referral-reward-extra_seniorpush',	
+'sm-0yst-A_afanty100_18xinnianli',	
+'客服新建leads',	
+'app-0yst-A_sy_nanti_test',	
+'内部TMK-bingbing.cheng@lejent.cc',	
+'内部TMK-fen.wang@lejent.cc',	
+'辅导APP-banner',	
+'sm-0yst-A_cubao_qimochongci',	
+'sm-0yst-A_yiqianbao_qimoztc',	
+'baiduM-1V1QM-A',	
+'9.9ceping-app-extra_dy',	
+'fudao-0yst-A_qimozhenduan',	
+'sm-0yst-A_afanti1to1_ganen',	
+'sm-0yst-A_afanti1to1_qimozhenduan',	
+'sm-0yst-A_afantihjz_wz_qimozhenduan',	
+'sm-0yst-A_afanty100_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimoztc',	
+'sm-0yst-A_shequn_zhenduan',	
+'sm-0yst-A_spzp020_qunar_qimoztc',	
+'今日头条-01D学情报告-A_',	
+'今日头条-1对1官网',	
+'今日头条-中小学1对1辅导',	
+'今日头条-学情报告',	
+'原CRM_APP拍搜高意向_20171130_ocean',	
+'原crm零元试听20171115',	
+'渠道投放-官网',	
+'电话线索_家长QQ群',	
+'社群活动-教而有方订阅号') then 'C'
+else 'D' end as 资源
+from course_order c 
+left join ocean o on o.id = c.student_id
+left join channel ch on ch.id = (o.extend_info::json#>>'{channels, 0}') ::bigint
+where c.status = 'finished'
+
+
+
+with 
+     demo_student as (select  d.student_id, d.id from demo_course d left join comm_records c on d.student_id = c.student_id 
+                       where date(c.created_time) >= '2017-12-01'
+                       and d.status = 'finished'),
+     order_student as (select  o.student_id, o.order_id from course_order o left join comm_records c on c.student_id = o.student_id
+     	              where date(c.created_time) >= '2017-12-01'
+     	              and o.status = 'finished'),
+     time_interval as (select distinct c.student_id, min(floor(extract(epoch from (c.created_time - o.created_time))/3600)) as hour_interval,
+     				--如果此值为0， 则为首次拨打，在选取hour_interval时
+     				--只要将此值限制为0即可，如果限制此值为0，只有时间戳后的
+     				--时间为首次拨打时才会计入
+     				(c.created_time - o.created_time) as judge_first_call 
+     				--每个在11月1日之后拨打的学生的唯一跟进时效，只有拨打了的才有时间戳，
+     				--因此不会存在负数
+     				from comm_records c left join ocean o on o.id = c.student_id 
+     				where date(c.created_time)>='2017-12-01'
+     				group by c.student_id),
+     time_uprange as (select ('2017-12-01')::date)
+
+
+select  k.城市||k.年级||k.资源||k.时效 as level ,
+	count(distinct k.student_id)as 学生数,
+	count(c1.id)as 拨打数,
+	sum(case when (c1.tianrun_info->>'status')::int=28 then 1 else 0 end)as 接通数,
+ 	count(distinct d.student_id)as完成试听学生,count(distinct d.id)as参加试听数,
+	count(distinct o.student_id)as成单学生,count(distinct o.order_id)as单数
+from
+(select distinct c.student_id,
+	--城市维度需要扩容，将'北京市'等加入
+	-- 各维度可按实际情况进行增删减调整
+case when (o.base_info->>'city')::varchar in ('北京','上海','广州','深圳','成都','杭州','武汉',
+'重庆','南京','天津','苏州','西安','长沙','沈阳','青岛','郑州','大连','东莞','宁波') then 'A'
+when (o.base_info->>'city')::varchar in ('石家庄','哈尔滨','福州','济南','昆明','兰州','台北',
+'南宁','银川','太原','长春','合肥','南昌','海口','贵阳','西宁','呼和浩特','拉萨','乌鲁木齐') then 'B'
+when (o.base_info->>'city')::varchar in ('南阳','日照','随州','庆阳','安阳','阳江','吐鲁番','张家口','大同','梅州','周口','东营',
+'佳木斯','锦州','怀化','濮阳','芜湖','抚州','定西','泰安','赤峰','德州','保定','大同','萍乡','揭阳','兴安',
+'孝感','来宾','乌海','邯郸','六安','广安','铁岭','潍坊','汕尾','忻州','达州','白银','忻州','常德','新余','锦州','赣州',
+'榆林','威海','淄博','通化','呼伦贝尔','葫芦岛','驻马店','通辽','芜湖','铁岭','安庆','本溪','唐山','荆门',
+'运城','上饶','马鞍','四平','河北','阳泉','武威','咸宁','石河子','信阳','东营','包头','潍坊','衢州','花洲','咸宁',
+'泰安','邵阳','白城','泰州','三明','铜陵','绵阳','盘锦','北海','安庆','襄阳','郴州','三明','榆林','松原','丽江','邵阳',
+'德州','阜阳','沧州','眉山','鄂尔多斯','德阳','丽水','聊城','淮北','舟山','保定','乌兰巴托','韶关','六安',
+'和田','九江','济宁','周山','衡阳','扬州','滨州','遵义','盐城','六盘水','枣庄','龙岩','淄博','双鸭山','衡水','商丘',
+'毕节','景州','辽源','连云港','晋城','响滩','玉山','柳州','乐清','牡丹江','株洲','莱芜') then 'C'
+else 'D' end as 城市,
+case when (o.base_info->>'grade')::varchar in ('7','8','105') then 'A'
+     when (o.base_info->>'grade')::varchar in ('3','106','9') then 'B'
+     when (o.base_info->>'grade')::varchar in ('104','11','13') then 'C'
+     when (o.base_info->>'grade')::varchar in ('2','12') then 'D'
+     else 'E'
+     end as 年级,
+case when (ch.name in ('cc新建leads',	
+'APP-拍搜新注册高购买力用户',	
+'拍搜APP',	
+'app-0yst-A_sy_qimochongci',	
+'app-0yst-A_sy_tifen',	
+'app-0yst-A_sy_qimoztc_12',	
+'拍搜APP-首页',	
+'最近半年活跃且一二线且拍搜50次以上或消费过',	
+'app-0yst-A_ps_tifen',	
+'app-0yst-A_sy_qimoztc',	
+'TMK',	
+'app-0yst-A_syfeed_tifen',	
+'app-0yst-A_dy_qimochongci',	
+'拍搜APP-辅导页',	
+'fudao-0yst-A_qimochongci',	
+'sm-0yst-A_afanty100_prize5',	
+'FROM_LEAD',	
+'渠道投放-搜狗',	
+'sm-0yst-A_afanty100_tifen',	
+'referral-reward-extra_dailyhypush',	
+'社群活动-家长公众号',	
+'app-0yst-A_dy_touxue',	
+'sm-0yst-A_spzp020_ynf_qimoztc',	
+'1617没充值_APP拍搜次数分类（50+）',	
+'app-0yst-A_ps_touxue',	
+'app-0yst-A_dy_qimoztc',	
+'最近6-12个月活跃且一二线且拍搜10-50次且未消费过',	
+'400热线',	
+'渠道投放-360',	
+'社群活动-微智校园',	
+'app-0yuanshiting-B_fdbanner0708',	
+'test-kewaimiao-extra_zhouzhou',	
+'FROM_CONTACT',	
+'spzp020-0yst-A_tifen',	
+'sm-0yst-A_afanti1to1_zhenduan',	
+'社群活动-尚品宅配',	
+'sm-0yst-A_afanti1to1_prize5_zhenduan',	
+'原CRM_0元试听20171121',	
+'某特定城市且拍搜次数10-50次且消费金额等于0且最后活跃日期6-12个月',	
+'今日头条-01I期末考试-A',	
+'原CRM_0元试听20171123B_coast',	
+'1617没充值_APP拍搜次数分类（10-30）',	
+'渠道投放-百度',	
+'sm-0yst-A_spzp020_flw_qimoztc',	
+'app-0yst-A_sy_zhenduan',	
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内',	
+'拍搜APP-辅导banner',	
+'拍搜APP-辅导Banner',	
+'referral-reward-extra_referrer',	
+'sm-0yst-A_afanty100_touxue',	
+'拍搜APP--拍搜结果页',	
+'app-0yst-A_ps_zhenduan',	
+'app-0yst-A_syfeed_ganen',	
+'sm-0yst-A_afanty100_qimoztc',	
+'sm-0yst-A_gczw_qimoztc',	
+'sm-0yst-A_afanti1to1_tifen',	
+'fudao-0yst-A_zhenduan')) then 'A'
+when ch.name in ('fudao-0yst-A_qimoztc',
+'referal-0yst-extra_杜年',
+'社群活动-智慧家长',
+'原CRM0元试听20171128_ocean',
+'app-0yst-A_sy_nanti_test1',
+'sm-0yst-A_afanti1to1_nov11',
+'sm-0yst-A_afanti1to1_wz_qimochongci',
+'sm-0yst-A_afantihjz_wz_qimochongci',
+'sm-0yst-A_afantyti_qimochongci',
+'sm-0yst-A_chubao_qimoztc',
+'sm-0yst-A_shequn_qimoztc',
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内（COAST）',
+'1617没充值_APP拍搜次数分类（10以内）',
+'app-0yst-A_ps_tifen_12',
+'今日头条渠道投放',
+'社群活动-海报',
+'sm-0yst-A_afanti1to1_nuandong4',
+'sm-0yst-A_spzp020_ponycar_qimoztc',
+'wb-default-extra',
+'app-0yst-A_dy_zhenduan',
+'社群活动-学生公众号',
+'sm-0yst-A_afanti1to1_wz_qimoztc',
+'teacher-sqtx0yst-A_',
+'原CRM0元试听20171117',
+'原crm_0元试听20171129ocean',
+'599zuowen-sm-extra_afanty100',
+'APP_0元试听_scbanner0603',
+'家长-转介绍',
+'sm-0yst-A_afanty100_prize5_tfb',
+'原CRM_0元试听20171123A_coast',
+'sm-0yst-A_afantihjz_qimoztc',
+'sm-0yst-A_shequn_qimochongci',
+'teacher-sqtx0yst-A_15137000960',
+'1617没充值_APP拍搜次数分类（30-50）',
+'sm-0yst-A_spzp020_gzlt_qimoztc',
+'sm-0yst-A_afanty100_yiyangqianxi',
+'spzp020-0yst-A_zhenduan',
+'sm-0yst-A_syfeed',
+'tmk新建leads',
+'社群活动-腾讯',
+'app-0yst-A_ps_ganen',
+'APP-0yuanshiting-B_syfeed0620',
+'APP_0元试听_fdbanner0616',
+'sghanyu-aft1v1-B_0713pc',
+'sm-0yst-A_afanty100_wz_qimoztc',
+'sm-0yst-A_afantyti_18xinnianli',
+'sm-0yst-A_guangfa_zhenduan',
+'今日头条-01G排名超车-A') then 'B'
+when ch.name in ('APP_0元试听_zbkbanner0602',	
+'sgzuowen-sqtx0yst-B_0713',	
+'sm-0yst-A_afanti1to1',	
+'FROM_POTENTIAL',	
+'app-0yst-A_ps_qimochongci',	
+'sm-0yst-A_spzp020_aft_qimoztc',	
+'拍搜APP-弹窗',	
+'sghanyu-aft1v1-B_0713',	
+'referral-reward-extra_ps',	
+'1617拍搜APP_金额300以上_初高中',	
+'sm-0yst-A_afanty100',	
+'qqrobot-0yuanshiting0621-B',	
+'1617拍搜APP_金额10-100_初高中',	
+'sm-0yst-A_meiyuanbang_tifen',	
+'sm-0yst-A_spzp020_czwy_qimoztc',	
+'sm-0yst-A_xuexiba_tifen',	
+'teacher-sqtx0yst-A_15839367338',	
+'teacher-sqtx0yst-A_15861287058',	
+'订阅号按钮',	
+'社群活动',	
+'app-0yst-A_syfeed_nianmokh',	
+'拍搜APP-拍搜结果页',	
+'sm-0yst-A_afanty100_zhenduan',	
+'app-0yst-A_ps_qimozhenduan',	
+'spzp020-0yst-A_1024',	
+'sgzuowen-sqtx0yst-B_0713pc',	
+'河北保定-消费大于0',	
+'shequn-sqtx0yst-B',	
+'sm-0yst-A_spzp020_qimoztc',	
+'sm-0yst-A_afanty100_qimozhenduan',	
+'原CRM最近半年活跃且一二线且拍搜50次以上或消费过_highseas',	
+'app-0yst-A_sy',	
+'app-0yst-A_dy_qimozhenduan',	
+'fudao-default-extra',	
+'referral-reward-extra_seniorpush',	
+'sm-0yst-A_afanty100_18xinnianli',	
+'客服新建leads',	
+'app-0yst-A_sy_nanti_test',	
+'内部TMK-bingbing.cheng@lejent.cc',	
+'内部TMK-fen.wang@lejent.cc',	
+'辅导APP-banner',	
+'sm-0yst-A_cubao_qimochongci',	
+'sm-0yst-A_yiqianbao_qimoztc',	
+'baiduM-1V1QM-A',	
+'9.9ceping-app-extra_dy',	
+'fudao-0yst-A_qimozhenduan',	
+'sm-0yst-A_afanti1to1_ganen',	
+'sm-0yst-A_afanti1to1_qimozhenduan',	
+'sm-0yst-A_afantihjz_wz_qimozhenduan',	
+'sm-0yst-A_afanty100_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimoztc',	
+'sm-0yst-A_shequn_zhenduan',	
+'sm-0yst-A_spzp020_qunar_qimoztc',	
+'今日头条-01D学情报告-A_',	
+'今日头条-1对1官网',	
+'今日头条-中小学1对1辅导',	
+'今日头条-学情报告',	
+'原CRM_APP拍搜高意向_20171130_ocean',	
+'原crm零元试听20171115',	
+'渠道投放-官网',	
+'电话线索_家长QQ群',	
+'社群活动-教而有方订阅号') then 'C'
+else 'D' end as 资源,
+case when c.hour_interval::int <= 12 then 'A'
+     when c.hour_interval::int >12 and c.hour_interval<=24 then 'B'
+     when c.hour_interval::int >24 and c.hour_interval<=72 then 'C'
+     when c.hour_interval::int >72 then 'D'
+     else 'E'
+     end as 时效
+
+from time_interval c
+left join ocean o on o.id = c.student_id
+left join channel ch on ch.id = (o.extend_info::json#>>'{channels, 0}') ::bigint
+-- where c.judge_first_call = 0 
+--加入此条限制，则为首次拨打
+) as k 
+join comm_records c1 on k.student_id = c1.student_id
+left join demo_student d on d.student_id = k.student_id
+left join order_student o on o.student_id = k.student_id
+where date(c1.created_time) >= (select * from time_uprange)
+group by level 
+
+
+part4 首次拨打接通率时效性相关
+0-12小时 A
+12-24小时 B
+24-72小时 C
+>72 小时D
+
+
+part5 已知编号类反查所有学生沟通状况明细
+with dis as (
+select distinct k.student_id, k.城市||k.年级||k.资源||k.时效 as level   
+from
+(select distinct c.student_id,
+	--城市维度需要扩容，将'北京市'等加入
+case when (o.base_info->>'city')::varchar in ('北京','上海','广州','深圳','成都','杭州','武汉',
+'重庆','南京','天津','苏州','西安','长沙','沈阳','青岛','郑州','大连','东莞','宁波') then 'A'
+when (o.base_info->>'city')::varchar in ('石家庄','哈尔滨','福州','济南','昆明','兰州','台北',
+'南宁','银川','太原','长春','合肥','南昌','海口','贵阳','西宁','呼和浩特','拉萨','乌鲁木齐') then 'B'
+when (o.base_info->>'city')::varchar in ('南阳','日照','随州','庆阳','安阳','阳江','吐鲁番','张家口','大同','梅州','周口','东营',
+'佳木斯','锦州','怀化','濮阳','芜湖','抚州','定西','泰安','赤峰','德州','保定','大同','萍乡','揭阳','兴安',
+'孝感','来宾','乌海','邯郸','六安','广安','铁岭','潍坊','汕尾','忻州','达州','白银','忻州','常德','新余','锦州','赣州',
+'榆林','威海','淄博','通化','呼伦贝尔','葫芦岛','驻马店','通辽','芜湖','铁岭','安庆','本溪','唐山','荆门',
+'运城','上饶','马鞍','四平','河北','阳泉','武威','咸宁','石河子','信阳','东营','包头','潍坊','衢州','花洲','咸宁',
+'泰安','邵阳','白城','泰州','三明','铜陵','绵阳','盘锦','北海','安庆','襄阳','郴州','三明','榆林','松原','丽江','邵阳',
+'德州','阜阳','沧州','眉山','鄂尔多斯','德阳','丽水','聊城','淮北','舟山','保定','乌兰巴托','韶关','六安',
+'和田','九江','济宁','周山','衡阳','扬州','滨州','遵义','盐城','六盘水','枣庄','龙岩','淄博','双鸭山','衡水','商丘',
+'毕节','景州','辽源','连云港','晋城','响滩','玉山','柳州','乐清','牡丹江','株洲','莱芜') then 'C'
+else 'D' end as 城市,
+case when (o.base_info->>'grade')::varchar in ('7','8','105') then 'A'
+     when (o.base_info->>'grade')::varchar in ('3','106','9') then 'B'
+     when (o.base_info->>'grade')::varchar in ('104','11','13') then 'C'
+     when (o.base_info->>'grade')::varchar in ('2','12') then 'D'
+     else 'E'
+     end as 年级,
+case when (ch.name in ('cc新建leads',	
+'APP-拍搜新注册高购买力用户',	
+'拍搜APP',	
+'app-0yst-A_sy_qimochongci',	
+'app-0yst-A_sy_tifen',	
+'app-0yst-A_sy_qimoztc_12',	
+'拍搜APP-首页',	
+'最近半年活跃且一二线且拍搜50次以上或消费过',	
+'app-0yst-A_ps_tifen',	
+'app-0yst-A_sy_qimoztc',	
+'TMK',	
+'app-0yst-A_syfeed_tifen',	
+'app-0yst-A_dy_qimochongci',	
+'拍搜APP-辅导页',	
+'fudao-0yst-A_qimochongci',	
+'sm-0yst-A_afanty100_prize5',	
+'FROM_LEAD',	
+'渠道投放-搜狗',	
+'sm-0yst-A_afanty100_tifen',	
+'referral-reward-extra_dailyhypush',	
+'社群活动-家长公众号',	
+'app-0yst-A_dy_touxue',	
+'sm-0yst-A_spzp020_ynf_qimoztc',	
+'1617没充值_APP拍搜次数分类（50+）',	
+'app-0yst-A_ps_touxue',	
+'app-0yst-A_dy_qimoztc',	
+'最近6-12个月活跃且一二线且拍搜10-50次且未消费过',	
+'400热线',	
+'渠道投放-360',	
+'社群活动-微智校园',	
+'app-0yuanshiting-B_fdbanner0708',	
+'test-kewaimiao-extra_zhouzhou',	
+'FROM_CONTACT',	
+'spzp020-0yst-A_tifen',	
+'sm-0yst-A_afanti1to1_zhenduan',	
+'社群活动-尚品宅配',	
+'sm-0yst-A_afanti1to1_prize5_zhenduan',	
+'原CRM_0元试听20171121',	
+'某特定城市且拍搜次数10-50次且消费金额等于0且最后活跃日期6-12个月',	
+'今日头条-01I期末考试-A',	
+'原CRM_0元试听20171123B_coast',	
+'1617没充值_APP拍搜次数分类（10-30）',	
+'渠道投放-百度',	
+'sm-0yst-A_spzp020_flw_qimoztc',	
+'app-0yst-A_sy_zhenduan',	
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内',	
+'拍搜APP-辅导banner',	
+'拍搜APP-辅导Banner',	
+'referral-reward-extra_referrer',	
+'sm-0yst-A_afanty100_touxue',	
+'拍搜APP--拍搜结果页',	
+'app-0yst-A_ps_zhenduan',	
+'app-0yst-A_syfeed_ganen',	
+'sm-0yst-A_afanty100_qimoztc',	
+'sm-0yst-A_gczw_qimoztc',	
+'sm-0yst-A_afanti1to1_tifen',	
+'fudao-0yst-A_zhenduan')) then 'A'
+when ch.name in ('fudao-0yst-A_qimoztc',
+'referal-0yst-extra_杜年',
+'社群活动-智慧家长',
+'原CRM0元试听20171128_ocean',
+'app-0yst-A_sy_nanti_test1',
+'sm-0yst-A_afanti1to1_nov11',
+'sm-0yst-A_afanti1to1_wz_qimochongci',
+'sm-0yst-A_afantihjz_wz_qimochongci',
+'sm-0yst-A_afantyti_qimochongci',
+'sm-0yst-A_chubao_qimoztc',
+'sm-0yst-A_shequn_qimoztc',
+'某特定城市拍搜次数50次以上或消费金额大于0且最后活跃日期0-6个月内（COAST）',
+'1617没充值_APP拍搜次数分类（10以内）',
+'app-0yst-A_ps_tifen_12',
+'今日头条渠道投放',
+'社群活动-海报',
+'sm-0yst-A_afanti1to1_nuandong4',
+'sm-0yst-A_spzp020_ponycar_qimoztc',
+'wb-default-extra',
+'app-0yst-A_dy_zhenduan',
+'社群活动-学生公众号',
+'sm-0yst-A_afanti1to1_wz_qimoztc',
+'teacher-sqtx0yst-A_',
+'原CRM0元试听20171117',
+'原crm_0元试听20171129ocean',
+'599zuowen-sm-extra_afanty100',
+'APP_0元试听_scbanner0603',
+'家长-转介绍',
+'sm-0yst-A_afanty100_prize5_tfb',
+'原CRM_0元试听20171123A_coast',
+'sm-0yst-A_afantihjz_qimoztc',
+'sm-0yst-A_shequn_qimochongci',
+'teacher-sqtx0yst-A_15137000960',
+'1617没充值_APP拍搜次数分类（30-50）',
+'sm-0yst-A_spzp020_gzlt_qimoztc',
+'sm-0yst-A_afanty100_yiyangqianxi',
+'spzp020-0yst-A_zhenduan',
+'sm-0yst-A_syfeed',
+'tmk新建leads',
+'社群活动-腾讯',
+'app-0yst-A_ps_ganen',
+'APP-0yuanshiting-B_syfeed0620',
+'APP_0元试听_fdbanner0616',
+'sghanyu-aft1v1-B_0713pc',
+'sm-0yst-A_afanty100_wz_qimoztc',
+'sm-0yst-A_afantyti_18xinnianli',
+'sm-0yst-A_guangfa_zhenduan',
+'今日头条-01G排名超车-A') then 'B'
+when ch.name in ('APP_0元试听_zbkbanner0602',	
+'sgzuowen-sqtx0yst-B_0713',	
+'sm-0yst-A_afanti1to1',	
+'FROM_POTENTIAL',	
+'app-0yst-A_ps_qimochongci',	
+'sm-0yst-A_spzp020_aft_qimoztc',	
+'拍搜APP-弹窗',	
+'sghanyu-aft1v1-B_0713',	
+'referral-reward-extra_ps',	
+'1617拍搜APP_金额300以上_初高中',	
+'sm-0yst-A_afanty100',	
+'qqrobot-0yuanshiting0621-B',	
+'1617拍搜APP_金额10-100_初高中',	
+'sm-0yst-A_meiyuanbang_tifen',	
+'sm-0yst-A_spzp020_czwy_qimoztc',	
+'sm-0yst-A_xuexiba_tifen',	
+'teacher-sqtx0yst-A_15839367338',	
+'teacher-sqtx0yst-A_15861287058',	
+'订阅号按钮',	
+'社群活动',	
+'app-0yst-A_syfeed_nianmokh',	
+'拍搜APP-拍搜结果页',	
+'sm-0yst-A_afanty100_zhenduan',	
+'app-0yst-A_ps_qimozhenduan',	
+'spzp020-0yst-A_1024',	
+'sgzuowen-sqtx0yst-B_0713pc',	
+'河北保定-消费大于0',	
+'shequn-sqtx0yst-B',	
+'sm-0yst-A_spzp020_qimoztc',	
+'sm-0yst-A_afanty100_qimozhenduan',	
+'原CRM最近半年活跃且一二线且拍搜50次以上或消费过_highseas',	
+'app-0yst-A_sy',	
+'app-0yst-A_dy_qimozhenduan',	
+'fudao-default-extra',	
+'referral-reward-extra_seniorpush',	
+'sm-0yst-A_afanty100_18xinnianli',	
+'客服新建leads',	
+'app-0yst-A_sy_nanti_test',	
+'内部TMK-bingbing.cheng@lejent.cc',	
+'内部TMK-fen.wang@lejent.cc',	
+'辅导APP-banner',	
+'sm-0yst-A_cubao_qimochongci',	
+'sm-0yst-A_yiqianbao_qimoztc',	
+'baiduM-1V1QM-A',	
+'9.9ceping-app-extra_dy',	
+'fudao-0yst-A_qimozhenduan',	
+'sm-0yst-A_afanti1to1_ganen',	
+'sm-0yst-A_afanti1to1_qimozhenduan',	
+'sm-0yst-A_afantihjz_wz_qimozhenduan',	
+'sm-0yst-A_afanty100_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimochongci',	
+'sm-0yst-A_afantyti_wz_qimoztc',	
+'sm-0yst-A_shequn_zhenduan',	
+'sm-0yst-A_spzp020_qunar_qimoztc',	
+'今日头条-01D学情报告-A_',	
+'今日头条-1对1官网',	
+'今日头条-中小学1对1辅导',	
+'今日头条-学情报告',	
+'原CRM_APP拍搜高意向_20171130_ocean',	
+'原crm零元试听20171115',	
+'渠道投放-官网',	
+'电话线索_家长QQ群',	
+'社群活动-教而有方订阅号') then 'C'
+else 'D' end as 资源,
+case when m.hour_interval::int <= 12 then 'A'
+     when m.hour_interval::int >12 and m.hour_interval<=24 then 'B'
+     when m.hour_interval::int >24 and m.hour_interval<=72 then 'C'
+     when m.hour_interval::int >72 then 'D'
+     else 'E'
+     end as 时效
+from comm_records c left join 
+(select distinct c1.student_id, min(floor(extract(epoch from (c1.created_time - o1.created_time))/3600)) as hour_interval
+     				from comm_records c1 left join ocean o1 on o1.id = c1.student_id --每个在11月1日之后拨打的学生的唯一跟进时效，只有拨打了的才有时间戳，
+     				--因此不会存在负数
+     				where date(c1.created_time)>='2017-11-01'
+     				group by c1.student_id) as m on c.student_id = m.student_id
+left join ocean o on o.id = c.student_id
+left join channel ch on ch.id = (o.extend_info::json#>>'{channels, 0}') ::bigint
+)as k )
+
+select c.student_id,l.level,count(c.id) as 外呼数,sum(case when (c.tianrun_info->>'status')::int =28 then 1 else 0 end)as 接通数
+
+from comm_records c 
+join dis l on l.student_id = c.student_id
+
+where date(c.created_time)>= '2018-01-12'
+group by c.student_id,l.level
+
+
+
+
+with time_uprange as (select (('2018-01-19')::date)as time_in , (('2018-01-20')::date)as time_up)
+select * from ocean  where date(created_time) between (select time_in from time_uprange) and (select time_up from time_uprange)
+
+

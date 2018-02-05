@@ -1,0 +1,120 @@
+--关单困难户
+with demo_order as 
+(select d.student_id,d.created_by,d.created_time
+from demo_course d  
+where d.student_id not in 
+(select distinct c.student_id 
+from course_order c where c.status = 'finished')
+and d.status = 'finished')
+
+select  a.last_name, a.region, d.created_by, date(d.created_time),count(distinct d.student_id)
+from demo_order d left join account_user a on a.id = d.created_by
+where a.is_staff = 'true'
+and date(d.created_time) >= '2017-12-01'
+group by a.last_name, a.region, d.created_by,date(d.created_time)
+
+
+coast 资源跟进情况
+student_id   电话   渠道   累计沟通次数
+
+with coast_now as (select c.lead_id,c.arrival_time,s.name as source from coast c
+                      left join campaign s on c.campaigns[-1] = s.id) --数组中的第一个int
+
+select c.lead_id, o.phone, c.source,
+to_char(c.arrival_time,'YYYY-MM-DD-HH24-MI'), 
+count(r.id)as 外呼数, 
+sum(case when (r.tianrun_info->>'status')::int =28 then 1 else 0 end) as 接通数
+from coast_now c 
+left join comm_records r 
+on r.student_id = c.lead_id
+left join ocean o  on o.id = c.lead_id
+group by c.lead_id,o.phone, c.source ,to_char(c.arrival_time,'YYYY-MM-DD-HH24-MI')
+having 外呼数 = 13
+order by to_char(c.arrival_time,'YYYY-MM-DD-HH24-MI')
+
+
+咨询+id+角色+参加试听学生数 试听课总数 试听课完成数
+试听完成数 完成试听学生数
+select a.last_name, count(distinct c.student_id)as 成单学生 , 
+sum(case when c.status = 'finished' then 1 else 0 end )as 成单数,
+from course_order c left join account_user a on a.id = c.created_by
+where date(created_time) >= '2017-12-01'
+and a.last_name not like ('')
+group by a.last_name
+
+
+
+
+各组的在职数
+
+select a.region , sum(case when a.is_staff ='true' then 1 else 0 end)
+from account_user a  
+group by a.region 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
