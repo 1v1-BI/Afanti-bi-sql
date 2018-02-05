@@ -1,0 +1,51 @@
+select tel_num, source, from_unixtime(create_time) as source_time, 
+from_unixtime(order_time) as order_time, planner_name,
+ money, original_money, lesson_num, subject, student_grade, 
+ note, max(result_table.create_time) 
+from 
+(
+select *
+from 
+(select user_online.`telephone_num` as tel_num, series_order.planner_name, 
+	case when series_order.grade =1 then '一年级'
+	     when series_order.grade =2 then '二年级'
+	     when series_order.grade =3 then '三年级'
+	     when series_order.grade =4 then '四年级'
+	     when series_order.grade =5 then '五年级'
+	     when series_order.grade =6 then '六年级'
+	     when series_order.grade =7 then '初一'
+	     when series_order.grade =8 then '初二'
+	     when series_order.grade =9 then '初三'
+	     when series_order.grade =10 then '小学'
+	     when series_order.grade =11 then '高一'
+	     when series_order.grade =12 then '高二'
+	     when series_order.grade =13 then '高三'
+	     when series_order.grade =101 then '一年级'
+	     when series_order.grade =102 then '二年级'
+	     when series_order.grade =103 then '三年级'
+	     when series_order.grade =104 then '四年级'
+	     when series_order.grade =105 then '五年级'
+	     when series_order.grade =106 then  '六年级'
+	     else '其他'
+	     end as student_grade,
+	series_order.amount/100 as money, series_order.original_amount/100 as original_money, 
+	series_order.lesson_num, series_order.`update_time` as order_time, series_order.note
+
+from  user_online 
+left join series_order 
+on user_online.`user_id` = series_order.`student_user_id` 
+where series_order.status ='SUCCESS' and  series_order.amount/100>100  
+and from_unixtime(series_order.update_time)  >= '2017-12-09'
+and 
+ from_unixtime(series_order.update_time)  < '2017-12-10') order_table
+left join
+crm_form_record 
+on order_table.tel_num = crm_form_record.`telephone_number` and order_table.order_time > crm_form_record.create_time
+# where crm_form_record.`telephone_number` != 'NULL'
+# group by crm_form_record.source, crm_form_record.create_time
+order by crm_form_record.create_time desc  # 使用desc是最后一个渠道，不适用desc是第一个渠道
+# order by order_table.order_time desc
+) 
+as result_table
+group by result_table.tel_num, result_table.order_time
+order by result_table.order_time desc
