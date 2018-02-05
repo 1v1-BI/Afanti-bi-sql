@@ -23,7 +23,7 @@ k1.last_name as 成单咨询师,
 to_char(k1.last_pay,'YYYY-MM-DD HH24:MI') as 最后支付时间,
 k1.order_num as 成单数, 
 k1.amount_total 总金额,
-m.content::json
+m.content
 from
 --part1 外呼数据， 用户电话，咨询师，资源，时间，外呼数，接通数
 (select s.phone, --方便查询
