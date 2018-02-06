@@ -1,9 +1,9 @@
 
---BIS数据/CC-level/【市场部需求】
+--BI数据/CC-level/【市场部需求】
 with source as (select o.id, s.source,o.phone,o.created_time 
 	from ocean o 
 	join  source_channel_campaign s on s.channel_id = (extend_info::json#>>'{channels, -1}') ::int 
-	where s.source like '%娄底%'  --输入监控资源
+	where s.source like '%娄底%'  --输入监控资源，%代表任意字符任意长度
 	and date(o.created_time)>= '2018-01-05'),--限定时间源头
 	first_call as (select c.student_id ,min(c.created_time) as first_time_in, c.created_by
 	from comm_records c 
