@@ -1,0 +1,4 @@
+# 非BI组的同学上传请勿用master branch
+# 上传sql请按格式 【线上库-sth】 或者 【线下库-sth】
+# 请在脚本内部贴入可搜索到的google表格名称
+# 请提交command时填写大略
