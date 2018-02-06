@@ -1,3 +1,5 @@
+
+--BIS数据/CC-level/【市场部需求】
 with source as (select o.id, s.source,o.phone,o.created_time 
 	from ocean o 
 	join  source_channel_campaign s on s.channel_id = (extend_info::json#>>'{channels, -1}') ::int 
@@ -31,7 +33,7 @@ a.last_name,
 s.source,
 c.student_id,
 c.created_by, --咨询师id
-to_char(s.created_time,'YYYY-MM-DD HH24:MI') as 资源进入时间,
+to_char(s.created_time,'YYYY-MM-DD HH24:MI') as 资源进入时间, 
 to_char(f1.first_time_in,'YYYY-MM-DD HH24:MI') as 首次拨打时间, 
 c.content,
 count(c.id) as 外呼数,
