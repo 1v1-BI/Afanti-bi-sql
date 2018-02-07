@@ -1,12 +1,18 @@
-#跟进时间跨度查询
---已录
-select a.username as 咨询师, a.region as 大区, c.created_by as 咨询师ID,c.id as 通话记录, (c.tianrun_info::json->>'status') as 沟通状态,
-    date(c.created_time) as 创建时间,
-     (date(c.start_time)-date(c.created_time)) as 间隔天数 ,extract(hour from (age(c.start_time,c.created_time))) as 间隔小时数
+
+--BI数据/CC-LEVEL/【销售经理需求】/FLW时间段
+--咨询师填写的跟进时间跨度查询
+select a.username as 咨询师, 
+a.region as 大区, 
+c.created_by as 咨询师ID,
+c.id as 通话记录, 
+(c.tianrun_info::json->>'status') as 沟通状态,
+date(c.created_time) as 创建时间,
+(date(c.start_time)-date(c.created_time)) as 间隔天数 ,
+extract(hour from (age(c.start_time,c.created_time))) as 间隔小时数
 from comm_records c left join account_user a 
 on a.id = c.created_by
 where todo_category ='FLW'
-  and date(created_time) between '2017-12-27' and '2017-12-28'
+  and date(created_time) between '2017-12-27' and '2017-12-28'     --此处更改时间
   and a.region not like '%学管师%'
   and a.region not like '%设备%'
   and a.region not like '%培训中%'
