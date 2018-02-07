@@ -8,6 +8,7 @@ c.id as 通话记录,
 (c.tianrun_info::json->>'status') as 沟通状态,
 date(c.created_time) as 创建时间,
 (date(c.start_time)-date(c.created_time)) as 间隔天数 ,
+--(c.start_time-c.created_time) as 间隔,
 extract(hour from (age(c.start_time,c.created_time))) as 间隔小时数
 from comm_records c left join account_user a 
 on a.id = c.created_by
@@ -16,7 +17,7 @@ where todo_category ='FLW'
   and a.region not like '%学管师%'
   and a.region not like '%设备%'
   and a.region not like '%培训中%'
-  and a.region not like '%离职%'
+  and a.is_staff ='true'
   and a.region not like '%Report%'
   and a.region not like '%排课中心%'
   and c.start_time is not null
